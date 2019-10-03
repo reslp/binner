@@ -10,8 +10,11 @@ Supported Binners
 Currently binner supports these metagenome binning programs:
 
 [CONCOCT] (https://github.com/BinPro/CONCOCT)
+
 [MaxBin2] (https://sourceforge.net/projects/maxbin2/)
+
 [MetaBat] (https://bitbucket.org/berkeleylab/metabat/src/master/)
+
 [blobtools] (https://github.com/DRL/blobtools)
 
 
