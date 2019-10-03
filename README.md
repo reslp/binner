@@ -92,7 +92,13 @@ $ wget ftp://ftp.ncbi.nih.gov/pub/taxonomy/accession2taxid/prot.accession2taxid.
 $ gunzip prot.accession2taxid.gz
 ```
 
-```$ binner -a metagenome.fasta -f forward_readfile.fq -r reverse_readfile.fq -m metabat -b /path/to/diamonddb -p /path/to/prot.accession2taxid```
+```$ binner -a metagenome.fasta -f forward_readfile.fq -r reverse_readfile.fq -m blobtools -b /path/to/diamonddb -p /path/to/prot.accession2taxid```
+
+**Run multiple binners**
+
+binner can also run multiple binners in one go:
+
+```$ binner -a metagenome.fasta -f forward_readfile.fq -r reverse_readfile.fq -m metabat,maxbin,concoct,blobtools -b /path/to/diamonddb -p /path/to/prot.accession2taxid```
 
 
 
