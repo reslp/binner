@@ -1,25 +1,38 @@
 #!/bin/bash
 # written by Philipp Resl, Oct. 2019, github.com/reslp/binner
+set -e
 
 usage() { 
 	echo "Welcome to binner. A script to quickly run metagenomic binning software using Docker."
 	echo
-	echo "Usage: $0 [-v] [-a <assembly_file>] [-f <read_file1>] [-r <read_file2>] [-m maxbin,metabat,blobtools,concoct] [-t nthreads] [[-b /path/to/diamonddb -p /path/to/prot.accession2taxid]]" 
+	echo "Usage: $0 [-v] [-a <assembly_file>] [-f <read_file1>] [-r <read_file2>] [-m maxbin,metabat,blobtools,concoct] [-t nthreads] [[--diamonddb=/path/to/diamonddb --protid=/path/to/prot.accession2taxid]] [-q] [-b [--buscosets=set1,set2]]" 
 	echo
 	echo "Options:"
 	echo "	-a <assembly_file> Assembly file in FASTA format (needs to be in current folder)"
 	echo "	-f <read_file1> Forward read file in FASTQ format (can be gzipped)"
 	echo "	-r <read_file2> Reverse read file in FASTQ format (can be gzipped)"
+	echo "		IMPORTANT: Currently the assembly and read files need to be in the same directory which has to the directory in which binner is run."
 	echo "	-m <maxbin,metabat,blobtools,concoct> specify binning software to run."
 	echo "	   Seperate multiple options by a , (eg. -o maxbin,blobtools)."
-	echo "	-t number of threads for multi threaded parts"
+	echo "	-t number of threads for multi-threaded parts"
+	echo "	-q run QUAST on the binned sets of contigs"
+	echo "	-b run BUSCO on the binned sets of contigs. See additional details below."
 	echo "	-v Display program version"
 	echo
 	echo "Options specific to blobtools:"
 	echo "	The blobtools container used here uses diamond instead of blast to increase speed."
 	echo "	Options needed when blobtools should be run. The blobtools container used here uses diamond instead of blast to increase speed."
-	echo "  	-b full (absolute) path to diamond database"
-	echo "  	-p full (absolute) path to directory containing prot.accession2taxid file provided by NCBI"
+	echo "  	--diamonddb=	full (absolute) path to diamond database"
+	echo "  	--protid= 	full (absolute) path to prot.accession2taxid file provided by NCBI"
+	echo
+	echo "Options needed when BUSCO analysis of contigs should be performed:"
+	echo "	The blobtools container used here uses diamond instead of blast to increase speed."
+	echo "	Options needed when blobtools should be run. The blobtools container used here uses diamond instead of blast to increase speed."
+	echo "		--buscosets=	BUSCO sets which should be tested. This will be run for each set of contigs. Individual sets should be comma"
+	echo "				separated. eg. --buscosets=fungi_odb9,bacteria_odb9,insects_odb9 ."
+	echo "				Running this assumes that folders with the busco sets exist in the current working directory. They should have"
+	echo "				the same name as passed to the --buscosets command. If they are not found binner will try to download them"
+	echo "				from the BUSCO website."
 	1>&2; exit 1; }
 	
 version() {
@@ -27,7 +40,10 @@ version() {
 	exit 0
 }
 
-while getopts ":t:m:a:f:r:vb:p:" option;
+QUAST="";
+BUSCO="";
+THREADS=1;
+while getopts ":t:m:a:f:r:vp:-:qb" option;
 	do
 		case "${option}"
 		in
@@ -37,14 +53,37 @@ while getopts ":t:m:a:f:r:vb:p:" option;
 			v) version;;
 			m) OPTIONS=${OPTARG};;
 			t) THREADS=${OPTARG};;
-			b) DIAMONDDB=${OPTARG};;
 			p) PROTID=${OPTARG};;
-			*) usage;;
-			?) usage;;
+			q) QUAST="quast";;
+			b) BUSCO="busco";;
+			-) LONG_OPTARG="${OPTARG#*=}"
+				case $OPTARG in
+					diamonddb=?*) DIAMONDDB="$LONG_OPTARG" ;;
+					protid=?*)  PROTID="$LONG_OPTARG";;
+					buscosets=?*) BUSCOS="$LONG_OPTARG";;
+					'' ) break ;;
+					*) echo "Illegal option --$OPTARG\n" >&2; usage; exit 2 ;;
+				esac ;;	
+			*) echo "Illegal option --$OPTARG\n" >&2; usage;;
+			?) echo "Illegal option --$OPTARG\n" >&2 usage;;
 		esac
 	done
 if [ $OPTIND -eq 1 ]; then usage; fi
 #echo $OPTIONS
+
+if [ "$BUSCO" == "busco" ]; then
+	echo "(binner) Checking if specified BUSCO sets are available: " ${BUSCOS//,/ }
+	for BUSC in ${BUSCOS//,/ }; do
+		if [[ -d $BUSC ]]; then
+			echo "(binner) BUSCO set $BUSC is present."
+		else
+			echo "(binner) $BUSCO not found. Will try to download from http://busco.ezlab.org/v2/datasets/$BUSC.tar.gz"
+			wget http://busco.ezlab.org/v2/datasets/"$BUSC".tar.gz
+			tar xfz "$BUSC".tar.gz
+			rm "$BUSC".tar.gz
+		fi
+	done;
+fi
 
 # this needs to be set because on Linux docker created files will be owned by root by default.
 unset DOCKER_USER
@@ -73,18 +112,45 @@ if [[ $OPTIONS == *"maxbin"* ]]; then
 	echo "(binner) Will run MaxBin"
 	mkdir -p maxbin
 	# these docker commands are not optimal because the create files as the root user.
-	# passing UID and GID don't work in this case because of the way maxbin is set up.
+	# passing UID and GID doesn't work in this case because of the way maxbin is set up.
 	# I have not yet found a way around this.
-	docker run -t -v $(pwd):/data/ reslp/samtools samtools idxstats /data/$ASSEMBLY.bam > maxbin/$ASSEMBLY.idxstats
+	echo "(binner) Indexing BAM file"
+	docker run --rm -t -v $(pwd):/data/ reslp/samtools samtools idxstats /data/$ASSEMBLY.bam > maxbin/$ASSEMBLY.idxstats
 	cut -f1,3 maxbin/$ASSEMBLY.idxstats > maxbin/$ASSEMBLY.counts
-	docker run -t -v $(pwd):/data/ reslp/maxbin run_MaxBin.pl -contig /data/$ASSEMBLY -abund /data/maxbin/$ASSEMBLY.counts -thread $THREADS -out /data/maxbin/maxbin_bin_out
+	docker run --rm -t -v $(pwd):/data/ reslp/maxbin run_MaxBin.pl -contig /data/$ASSEMBLY -abund /data/maxbin/$ASSEMBLY.counts -thread $THREADS -out /data/maxbin/maxbin_bin_out
+	if [ "$QUAST" == "quast" ]; then
+		echo "(binner) Will run QUAST for MaxBin bins"
+		docker run --rm -t -v $(pwd):/data/ reslp/quast quast.py $(ls -d -1 "maxbin/"*.fasta | sed 's/^/\/data\//') -o /data/maxbin/quast_maxbin --silent
+	fi
+	if [ "$BUSCO" == "busco" ]; then
+		mkdir -p maxbin/tmp
+		for f in $(ls maxbin/*.fasta); do
+			for BUSC in ${BUSCOS//,/ }; do
+				echo "(binner) Run BUSCO $BUSC for $f"
+				docker run -t --rm $DOCKER_USER -v $(pwd):/data/ -e AUGUSTUS_CONFIG_PATH="/opt/conda/config" -w /data/maxbin reslp/busco run_busco -i $(basename "$f") --out "$BUSC"_"$(basename "$f")" -c $THREADS --lineage_path ../"$BUSC" -m genome -q
+			done
+		done
+	fi
 fi
 
 if [[ $OPTIONS == *"metabat"* ]]; then
 	echo "(binner) Will run MetaBat"
 	mkdir -p metabat
 	docker run -t $DOCKER_USER -v $(pwd):/data/ --rm reslp/metabat jgi_summarize_bam_contig_depths --outputDepth /data/metabat/metabat_depth.txt --pairedContigs /data/metabat/metabat_paired.txt /data/$ASSEMBLY.bam
-	docker run -t $DOCKER_USER -v $(pwd):/data/ --rm reslp/metabat metabat2 -i /data/$ASSEMBLY -a /data/metabat/metabat_depth.txt -o metabat --sensitive -v
+	docker run -t $DOCKER_USER -w /data/metabat/ -v $(pwd):/data/ --rm reslp/metabat metabat2 -i /data/$ASSEMBLY -a /data/metabat/metabat_depth.txt -o metabat --sensitive
+	if ["$QUAST" == "quast" ]; then
+		echo "(binner) Will run QUAST for MetaBat bins"
+		docker run --rm -t -v $(pwd):/data/ $DOCKER_USER reslp/quast quast.py $(ls -d -1 "metabat/"*.fa | sed 's/^/\/data\//') -o /data/metabat/quast_metabat --silent
+	fi
+	if [ "$BUSCO" == "busco" ]; then
+		mkdir -p metabat/tmp
+		for f in $(ls metabat/*.fa); do
+			for BUSC in ${BUSCOS//,/ }; do
+				echo "(binner) Run BUSCO $BUSC for $f"
+				docker run -t --rm $DOCKER_USER -v $(pwd):/data/ -e AUGUSTUS_CONFIG_PATH="/opt/conda/config" -w /data/metabat reslp/busco run_busco -i $(basename "$f") --out "$BUSC"_"$(basename "$f")" -c $THREADS --lineage_path ../"$BUSC" -m genome -q
+			done
+		done
+	fi
 fi
 
 if [[ $OPTIONS == *"concoct"* ]]; then
@@ -100,10 +166,23 @@ if [[ $OPTIONS == *"concoct"* ]]; then
 	docker run $DOCKER_USER -v $(pwd):/data/ --rm reslp/concoct merge_cutup_clustering.py /data/concoct/"$ASSEMBLY"_concoct_clustering_gt1000.csv > concoct/"$ASSEMBLY"_concoct_clustering_merged.csv
 	echo "(binner) Exract FASTA chunks ..."
 	mkdir -p concoct/bins
-	docker run -t -v $(pwd):/data/ --rm reslp/concoct extract_fasta_bins.py /data/"$ASSEMBLY" /data/concoct/"$ASSEMBLY"_concoct_clustering_merged.csv --output_path /data/concoct/bins
+	docker run -t $DOCKER_USER -v $(pwd):/data/ --rm reslp/concoct extract_fasta_bins.py /data/"$ASSEMBLY" /data/concoct/"$ASSEMBLY"_concoct_clustering_merged.csv --output_path /data/concoct/bins
 	cd concoct/bins
-	rename "s/^/"$ASSEMBLY"_concoct_/" *.fa
+	rename "s/^/"concoct_"/" *.fa
 	cd ../..
+	if [ "$QUAST" == "quast" ]; then
+		echo "(binner) Will run QUAST for CONCOT bins"
+		docker run --rm -t -v $(pwd):/data/ $DOCKER_USER reslp/quast quast.py $(ls -d -1 "concoct/bins/"*.fa | sed 's/^/\/data\//') -o /data/concoct/quast_concoct --silent
+	fi
+	if [ "$BUSCO" == "busco" ]; then
+		mkdir -p concoct/bins/tmp
+		for f in $(ls concoct/bins/*.fa); do
+			for BUSC in ${BUSCOS//,/ }; do
+				echo "(binner) Run BUSCO $BUSC for $f"
+				docker run -t --rm $DOCKER_USER -v $(pwd):/data/ -e AUGUSTUS_CONFIG_PATH="/opt/conda/config" -w /data/concoct/bins reslp/busco run_busco -i $(basename "$f") --out "$BUSC"_"$(basename "$f")" -c $THREADS --lineage_path ../../"$BUSC" -m genome -q
+			done
+		done
+	fi
 fi
 
 if [[ $OPTIONS == *"blobtools"* ]]; then
@@ -146,5 +225,18 @@ if [[ $OPTIONS == *"blobtools"* ]]; then
 	docker run -t $DOCKER_USER -v $(pwd):/data/ --rm reslp/extract_contigs /data/"$ASSEMBLY" /data/"$ASSEMBLY"_blobtools.blobDB.table.txt
 	rm $ASSEMBLY
 	cd ..
+	if [ "$QUAST" == "quast" ]; then
+		echo "(binner) Will run QUAST for blobtools bins"
+		docker run --rm -t -v $(pwd):/data/ $DOCKER_USER reslp/quast quast.py $(ls -d -1 "blobtools/"*.fa | sed 's/^/\/data\//') -o /data/blobtools/quast_blobtools --silent
+	fi
+		if [ "$BUSCO" == "busco" ]; then
+		mkdir -p blobtools/tmp
+		for f in $(ls blobtools/*.fa); do
+			for BUSC in ${BUSCOS//,/ }; do
+				echo "(binner) Run BUSCO $BUSC for $f"
+				docker run -t --rm $DOCKER_USER -v $(pwd):/data/ -e AUGUSTUS_CONFIG_PATH="/opt/conda/config" -w /data/blobtools reslp/busco run_busco -i $(basename "$f") --out "$BUSC"_"$(basename "$f")" -c $THREADS --lineage_path ../"$BUSC" -m genome -q
+			done
+		done
+	fi
 fi
 

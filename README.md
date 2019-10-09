@@ -36,22 +36,35 @@ $ chmod +x binner
 $ ./binner -h
 Welcome to binner. A script to quickly run metagenomic binning software using Docker.
 
-Usage: ./binner.sh [-v] [-a <assembly_file>] [-f <read_file1>] [-r <read_file2>] [-m maxbin,metabat,blobtools,concoct] [-t nthreads] [[-b /path/to/diamonddb -p /path/to/prot.accession2taxid]]
+Usage: binner [-v] [-a <assembly_file>] [-f <read_file1>] [-r <read_file2>] [-m maxbin,metabat,blobtools,concoct] [-t nthreads] [[--diamonddb=/path/to/diamonddb --protid=/path/to/prot.accession2taxid]] [-q] [-b [--buscosets=set1,set2]]
 
 Options:
 	-a <assembly_file> Assembly file in FASTA format (needs to be in current folder)
 	-f <read_file1> Forward read file in FASTQ format (can be gzipped)
 	-r <read_file2> Reverse read file in FASTQ format (can be gzipped)
+		IMPORTANT: Currently the assembly and read files need to be in the same directory which has to the directory in which binner is run.
 	-m <maxbin,metabat,blobtools,concoct> specify binning software to run.
 	   Seperate multiple options by a , (eg. -o maxbin,blobtools).
-	-t number of threads for multi threaded parts
+	-t number of threads for multi-threaded parts
+	-q run QUAST on the binned sets of contigs
+	-b run BUSCO on the binned sets of contigs. See additional details below.
 	-v Display program version
 
 Options specific to blobtools:
 	The blobtools container used here uses diamond instead of blast to increase speed.
 	Options needed when blobtools should be run. The blobtools container used here uses diamond instead of blast to increase speed.
-  	-b full (absolute) path to diamond database
-  	-p full (absolute) path to directory containing prot.accession2taxid file provided by NCBI
+  	--diamonddb=	full (absolute) path to diamond database
+  	--protid= 	full (absolute) path to prot.accession2taxid file provided by NCBI
+
+Options needed when BUSCO analysis of contigs should be performed:
+	The blobtools container used here uses diamond instead of blast to increase speed.
+	Options needed when blobtools should be run. The blobtools container used here uses diamond instead of blast to increase speed.
+		--buscosets=	BUSCO sets which should be tested. This will be run for each set of contigs. Individual sets should be comma
+				separated. eg. --buscosets=fungi_odb9,bacteria_odb9,insects_odb9 .
+				Running this assumes that folders with the busco sets exist in the current working directory. They should have
+				the same name as passed to the --buscosets command. If they are not found binner will try to download them
+				from the BUSCO website.
+
 ```
 
 
@@ -100,6 +113,19 @@ binner can also run multiple binners in one go:
 
 ```$ binner -a metagenome.fasta -f forward_readfile.fq -r reverse_readfile.fq -m metabat,maxbin,concoct,blobtools -b /path/to/diamonddb -p /path/to/prot.accession2taxid```
 
+**Analyze bins with QUAST and BUSCO**
+
+It is possible to analyze the created bins with QUAST and BUSCO directly with binner to identify interesting sets of bins. Output for this will be produced in the directory containing the bins.
+
+This can be done with two commandline flags `-q` for quast and `-b`for busco. Here are some example commands:
+
+```$ binner -a metagenome.fasta -f forward_readfile.fq -r reverse_readfile.fq -m concoct -q```
+
+This command will run concoct to create bins and QUAST to evaluate the individual bins.
+
+```$ binner -a metagenome.fasta -f forward_readfile.fq -r reverse_readfile.fq -m maxbin -b --buscosets=fungi_odb9,dikarya_odb9```
+
+The above command will run maxbin to identify bins of contigs and will run BUSCO the specified busco analyses `--buscosets=fungi_odb9,dikarya_odb9` on each set of bins. Names of the used busco sets should refer to the names on the BUSCO website. The folders for each BUSCO set should be placed in the working directory. If they are not found, binner will try to download them directly from the BUSCO website.
 
 
 
