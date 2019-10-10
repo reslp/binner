@@ -48,6 +48,8 @@ Options:
 	-t number of threads for multi-threaded parts
 	-q run QUAST on the binned sets of contigs
 	-b run BUSCO on the binned sets of contigs. See additional details below.
+	--multiqc Run multiqc after all binning steps to create a summary report on all the bins. This should be used together with -q, -b or both.
+
 	-v Display program version
 
 Options specific to blobtools:
@@ -70,10 +72,12 @@ Options needed when BUSCO analysis of contigs should be performed:
 
 
 
-USAGE
+USAGE EXAMPLES
 ========
 
 binner can run multiple binning software. The components of different binners are contained as individual Docker containers. It is not necessary to install them individually. Most metagenomic binners need an assembly and the associated read files used to create the assembly. Binner expects that the Assembly to filter is provided in FASTA format and the read files in FASTQ format. Assembly and reads should be in the same directory. binner should be executed in this directory.
+
+Additionally binner can perform downstream analyses to evaluate (with BUSCO and QUAST) and aggregate (with multiqc) binning results.
 
 **Running MetaBat with binner:**
 
@@ -126,6 +130,14 @@ This command will run concoct to create bins and QUAST to evaluate the individua
 ```$ binner -a metagenome.fasta -f forward_readfile.fq -r reverse_readfile.fq -m maxbin -b --buscosets=fungi_odb9,dikarya_odb9```
 
 The above command will run maxbin to identify bins of contigs and will run BUSCO the specified busco analyses `--buscosets=fungi_odb9,dikarya_odb9` on each set of bins. Names of the used busco sets should refer to the names on the BUSCO website. The folders for each BUSCO set should be placed in the working directory. If they are not found, binner will try to download them directly from the BUSCO website.
+
+**Aggregate results with multiqc**
+
+To include multiqc into your binner run use a command like this:
+
+```$ binner -a metagenome.fasta -f forward_readfile.fq -r reverse_readfile.fq -m maxbin,blobtools,concoct -b -q --buscosets=fungi_odb9,dikarya_odb9 -b /path/to/diamonddb -p /path/to/prot.accession2taxid --multiqc```
+
+This command will run binning with maxbin,blobtools and concoct and perform downstream analyses with BUSCO and QUAST and will aggregate results with multiqc.
 
 
 
