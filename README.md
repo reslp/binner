@@ -129,7 +129,7 @@ This command will run concoct to create bins and QUAST to evaluate the individua
 
 ```$ binner -a metagenome.fasta -f forward_readfile.fq -r reverse_readfile.fq -m maxbin -b --buscosets=fungi_odb9,dikarya_odb9```
 
-The above command will run maxbin to identify bins of contigs and will run BUSCO the specified busco analyses `--buscosets=fungi_odb9,dikarya_odb9` on each set of bins. Names of the used busco sets should refer to the names on the BUSCO website. The folders for each BUSCO set should be placed in the working directory. If they are not found, binner will try to download them directly from the BUSCO website.
+The above command will run maxbin to identify bins of contigs and will run the specified BUSCO analyses `--buscosets=fungi_odb9,dikarya_odb9` on each set of bins. Names of the used busco sets should refer to the names on the BUSCO website. The folders for each BUSCO set should be placed in the working directory. If they are not found, binner will try to download them directly from the BUSCO website.
 
 **Aggregate results with multiqc**
 
