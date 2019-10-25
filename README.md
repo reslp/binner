@@ -44,7 +44,7 @@ Options:
 	-r <read_file2> Reverse read file in FASTQ format (can be gzipped)
 		IMPORTANT: Currently the assembly and read files need to be in the same directory which has to the directory in which binner is run.
 	-m <maxbin,metabat,blobtools,concoct> specify binning software to run.
-	   Seperate multiple options by a , (eg. -o maxbin,blobtools).
+	   Seperate multiple options by a , (eg. -m maxbin,blobtools).
 	-t number of threads for multi-threaded parts
 	-q run QUAST on the binned sets of contigs
 	-b run BUSCO on the binned sets of contigs. See additional details below.
