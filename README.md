@@ -39,7 +39,7 @@ Welcome to binner. A script to quickly run metagenomic binning software using Do
 Usage: binner [-v] [-a <assembly_file>] [-f <read_file1>] [-r <read_file2>] [-m maxbin,metabat,blobtools,concoct] [-t nthreads] [[--diamonddb=/path/to/diamonddb --protid=/path/to/prot.accession2taxid]] [-q] [-b [--buscosets=set1,set2]]
 
 Options:
-	-a <assembly_file> Assembly file in FASTA format (needs to be in current folder)
+	-a <assembly_file> Assembly file in FASTA format
 	-f <read_file1> Forward read file in FASTQ format (can be gzipped)
 	-r <read_file2> Reverse read file in FASTQ format (can be gzipped)
 		IMPORTANT: Currently the assembly and read files need to be in the same directory which has to the directory in which binner is run.
@@ -75,7 +75,7 @@ Options needed when BUSCO analysis of contigs should be performed:
 USAGE EXAMPLES
 ========
 
-binner can run multiple binning software. The components of different binners are contained as individual Docker containers. It is not necessary to install them individually. Most metagenomic binners need an assembly and the associated read files used to create the assembly. Binner expects that the Assembly to filter is provided in FASTA format and the read files in FASTQ format. Assembly and reads should be in the same directory. binner should be executed in this directory.
+binner can run multiple binning programs. The components of different binners are contained as individual Docker containers. It is not necessary to install them individually. Most metagenomic binners need an assembly and the associated read files used to create the assembly. Binner expects that the Assembly to filter is provided in FASTA format and the read files in FASTQ format. binner creates output in the directory it is executed in.
 
 Additionally binner can perform downstream analyses to evaluate (with BUSCO and QUAST) and aggregate (with multiqc) binning results.
 
@@ -146,8 +146,8 @@ COPYRIGTH AND LICENSE
 
 Copyright (C) 2019 Philipp Resl
 
-This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+binner is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 
-This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+binner is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License along with this program in the file LICENSE. If not, see http://www.gnu.org/licenses/.

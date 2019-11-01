@@ -8,9 +8,9 @@ usage() {
 	echo "Usage: $0 [-v] [-a <assembly_file>] [-f <read_file1>] [-r <read_file2>] [-m maxbin,metabat,blobtools,concoct] [-t nthreads] [[--diamonddb=/path/to/diamonddb --protid=/path/to/prot.accession2taxid]] [-q] [-b [--buscosets=set1,set2]]" 
 	echo
 	echo "Options:"
-	echo "	-a <assembly_file> Assembly file in FASTA format"
-	echo "	-f <read_file1> Forward read file in FASTQ format (can be gzipped)"
-	echo "	-r <read_file2> Reverse read file in FASTQ format (can be gzipped)"
+	echo "	-a <assembly_file> Path to assembly file in FASTA format"
+	echo "	-f <read_file1> Path to forward read file in FASTQ format (can be gzipped)"
+	echo "	-r <read_file2> Path to reverse read file in FASTQ format (can be gzipped)"
 	echo "		IMPORTANT: Currently the assembly and read files need to be in the same directory which has to the directory in which binner is run."
 	echo "	-m <maxbin,metabat,blobtools,concoct> specify binning software to run."
 	echo "	   Seperate multiple options by a , (eg. -m maxbin,blobtools)."
@@ -38,7 +38,7 @@ usage() {
 	1>&2; exit 1; }
 	
 version() {
-	echo "binner version 0.1"
+	echo "binner version 0.2"
 	exit 0
 }
 
