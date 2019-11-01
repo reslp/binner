@@ -22,3 +22,14 @@ testdata/scaffolds.fasta.index.4.bt2
 testdata/scaffolds.fasta.index.rev.1.bt2
 testdata/scaffolds.fasta.index.rev.2.bt2
 testdata/scaffolds.fasta.sam
+testdata/concoct/bins/0.fa
+testdata/concoct/scaffolds.fasta_concoct_args.txt
+testdata/concoct/scaffolds.fasta_concoct_clustering_gt1000.csv
+testdata/concoct/scaffolds.fasta_concoct_clustering_merged.csv
+testdata/concoct/scaffolds.fasta_concoct_log.txt
+testdata/concoct/scaffolds.fasta_concoct_original_data_gt1000.csv
+testdata/concoct/scaffolds.fasta_concoct_PCA_components_data_gt1000.csv
+testdata/concoct/scaffolds.fasta_concoct_PCA_transformed_data_gt1000.csv
+testdata/concoct_coverage_table.tsv
+testdata/scaffolds.fasta_contigs_10K.bed
+testdata/scaffolds.fasta_contigs_10K.fa
