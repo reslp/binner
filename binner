@@ -1,5 +1,12 @@
 #!/bin/bash
 # written by Philipp Resl, Oct. 2019, github.com/reslp/binner
+# binners to add:
+# https://github.com/younglululu/COCACOLA
+# https://github.com/edgraham/BinSanity
+# https://sourceforge.net/projects/sb2nhri/files/MyCC/
+# https://sourceforge.net/p/metawatt/wiki/Home/
+# https://github.com/cmks/DAS_Tool
+
 set -e
 
 usage() { 
@@ -205,7 +212,7 @@ if [[ $OPTIONS == *"concoct"* ]]; then
 	docker run $DOCKER_USER -v $(pwd):/data/ --rm reslp/concoct merge_cutup_clustering.py /data/concoct/"$ASSEMBLY"_concoct_clustering_gt1000.csv > concoct/"$ASSEMBLY"_concoct_clustering_merged.csv
 	echo "(binner) Exract FASTA chunks ..."
 	mkdir -p concoct/bins
-	docker run -t $DOCKER_USER -v $(pwd):/data/ --rm reslp/concoct extract_fasta_bins.py /data/"$ASSEMBLY" /data/concoct/"$ASSEMBLY"_concoct_clustering_merged.csv --output_path /data/concoct/bins
+	docker run -t $DOCKER_USER -v $(pwd):/data/ -v $ASSEMBLYPATH:/assembly/ --rm reslp/concoct extract_fasta_bins.py /assembly/"$ASSEMBLY" /data/concoct/"$ASSEMBLY"_concoct_clustering_merged.csv --output_path /data/concoct/bins
 	cd concoct/bins
 	rename "s/^/"concoct_"/" *.fa
 	cd ../..
