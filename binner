@@ -263,7 +263,7 @@ if [[ $OPTIONS == *"blobtools"* ]]; then
 	echo "(binner) reformatting diamond results for use with blobtools..."
 	docker run $DOCKER_USER -v $(pwd):/data/ -v $(dirname $PROTID):/opt/mapping --rm reslp/get_taxids /opt/mapping/prot.accession2taxid /data/blobtools/"$ASSEMBLY"_diamond_matches > blobtools/"$ASSEMBLY"_diamond_matches_formatted
 	echo "(binner) Running blobtools"
-	docker run -t $DOCKER_USER -v $(pwd):/data/ --rm reslp/blobtools create -i /data/$ASSEMBLY -b /data/$ASSEMBLY.bam -t /data/blobtools/"$ASSEMBLY"_diamond_matches_formatted -o /data/blobtools/"$ASSEMBLY"_blobtools
+	docker run -t $DOCKER_USER -v $(pwd):/data/  -v $ASSEMBLYPATH:/assembly/ --rm reslp/blobtools create -i /assembly/$ASSEMBLY -b /data/$ASSEMBLY.bam -t /data/blobtools/"$ASSEMBLY"_diamond_matches_formatted -o /data/blobtools/"$ASSEMBLY"_blobtools
 	docker run -t $DOCKER_USER -v $(pwd):/data/ --rm reslp/blobtools view -i /data/blobtools/"$ASSEMBLY"_blobtools.blobDB.json -o /data/blobtools/
 	docker run -t $DOCKER_USER -v $(pwd):/data/ --rm reslp/blobtools plot -i /data/blobtools/"$ASSEMBLY"_blobtools.blobDB.json -o /data/blobtools/
 	echo "(binner) extracting contigs from blobtools"
