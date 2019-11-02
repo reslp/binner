@@ -267,7 +267,7 @@ if [[ $OPTIONS == *"blobtools"* ]]; then
 	docker run -t $DOCKER_USER -v $(pwd):/data/ --rm reslp/blobtools view -i /data/blobtools/"$ASSEMBLY"_blobtools.blobDB.json -o /data/blobtools/
 	docker run -t $DOCKER_USER -v $(pwd):/data/ --rm reslp/blobtools plot -i /data/blobtools/"$ASSEMBLY"_blobtools.blobDB.json -o /data/blobtools/
 	echo "(binner) extracting contigs from blobtools"
-	cp $ASSEMBLY blobtools/
+	cp "$ASSEMBLYPATH"/"$ASSEMBLY" blobtools/
 	cd blobtools
 	docker run -t $DOCKER_USER -v $(pwd):/data/ -v $ASSEMBLYPATH:/assembly/ --rm reslp/extract_contigs /assembly/"$ASSEMBLY" /data/"$ASSEMBLY"_blobtools.blobDB.table.txt
 	rm $ASSEMBLY
