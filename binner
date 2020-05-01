@@ -26,7 +26,7 @@ usage() {
 	echo "	-b run BUSCO on the binned sets of contigs. See additional details below."
 	echo "	--multiqc Run multiqc after all binning steps to create a summary report on all the bins. This should be used together with -q, -b or both."
 	echo
-	echo "	-v Display program version"
+	echo "	-v Display program version and versions of used additional software."
 	echo
 	echo "Options specific to blobtools:"
 	echo "	The blobtools container used here uses diamond instead of blast to increase speed."
@@ -44,8 +44,32 @@ usage() {
 	echo "				from the BUSCO website."
 	1>&2; exit 1; }
 	
+# versions of used containers:
+QUAST_VERSION="5.0.2"
+BUSCO_VERSION="3.0.2"
+MULTIQC_VERSION="1.6"
+BOWTIE2_VERSION="2.3.5"
+SAMTOOLS_VERSION="1.9"
+DIAMOND_VERSION="0.9.22"
+MAXBIN_VERSION="2.2.6"
+METABAT_VERSION="2.13"
+CONCOCT_VERSION="1.1"
+BLOBTOOLS_VERSION="1.1.1"
+
 version() {
-	echo "binner version 0.2"
+	echo "binner v0.3 - https://github.com/reslp/binner"
+	echo
+	echo "Additional software used:"
+	echo "    Quast: $QUAST_VERSION (http://quast.sourceforge.net/quast)"
+	echo "    Busco: $BUSCO_VERSION (https://busco-archive.ezlab.org/v3/)"
+	echo "    MultiQC: $MULTIQC_VERSION (https://multiqc.info/)"
+	echo "    bowtie2: $BOWTIE2_VERSION (http://bowtie-bio.sourceforge.net/bowtie2/index.shtml)"
+	echo "    samtools: $SAMTOOLS_VERSION (http://www.htslib.org/)"
+	echo "    diamond: $DIAMOND_VERSION (http://www.diamondsearch.org/index.php)"
+	echo "    MaxBin: $MAXBIN_VERSION (https://sourceforge.net/projects/maxbin/)"
+	echo "    MetaBAT: $METABAT_VERSION (https://bitbucket.org/berkeleylab/metabat/src/master/)"
+	echo "    CONCOCT: $CONCOCT_VERSION (https://github.com/BinPro/CONCOCT)"
+	echo "    BlobTools: $BLOBTOOLS_VERSION (https://blobtools.readme.io/docs)"
 	exit 0
 }
 
@@ -53,6 +77,9 @@ QUAST="";
 BUSCO="";
 MULTIQC="";
 THREADS=1;
+
+
+
 while getopts ":t:m:a:f:r:vp:-:qb" option;
 	do
 		case "${option}"
@@ -139,15 +166,15 @@ if [[ ! -f "$ASSEMBLY".bam ]]; then
 	echo "(binner) No BAM file found. Will perform read mapping with bowtie2 ..."
 	if [[ ! -f "$ASSEMBLY".index.1.bt2 ]]; then
 		echo "(binner) No Bowtie2 index file found. Creating Bowtie2 index..."
-		docker run -t --rm $DOCKER_USER -v $(pwd):/data/ -v $ASSEMBLYPATH:/assembly/ reslp/bowtie2 bowtie2-build /assembly/$ASSEMBLY /data/$ASSEMBLY.index -q
+		docker run -t --rm $DOCKER_USER -v $(pwd):/data/ -v $ASSEMBLYPATH:/assembly/ reslp/bowtie2:$BOWTIE2_VERSION bowtie2-build /assembly/$ASSEMBLY /data/$ASSEMBLY.index -q 
 	fi
 	echo "(binner) Mapping reads ..."
-	docker run -t --rm $DOCKER_USER -v $(pwd):/data/ -v $RF1PATH:/RF1/ -v $RF2PATH:/RF2/ reslp/bowtie2 bowtie2 -p $THREADS -q --phred33 --fr -x /data/$ASSEMBLY.index -1 /RF1/$RF1 -2 /RF2/$RF2 -S /data/$ASSEMBLY.sam --quiet
+	docker run -t --rm $DOCKER_USER -v $(pwd):/data/ -v $RF1PATH:/RF1/ -v $RF2PATH:/RF2/ reslp/bowtie2:$BOWTIE2_VERSION bowtie2 -p $THREADS -q --phred33 --fr -x /data/$ASSEMBLY.index -1 /RF1/$RF1 -2 /RF2/$RF2 -S /data/$ASSEMBLY.sam --quiet
 	echo "(binner) Converting SAM to BAM ..."
-	docker run -t --rm $DOCKER_USER -v $(pwd):/data/ reslp/samtools samtools view -bS /data/$ASSEMBLY.sam -o /data/$ASSEMBLY.bam
-	docker run -t --rm $DOCKER_USER -v $(pwd):/data/ reslp/samtools samtools sort -o /data/$ASSEMBLY.bam /data/$ASSEMBLY.bam
+	docker run -t --rm $DOCKER_USER -v $(pwd):/data/ reslp/samtools:$SAMTOOLS_VERSION samtools view -bS /data/$ASSEMBLY.sam -o /data/$ASSEMBLY.bam
+	docker run -t --rm $DOCKER_USER -v $(pwd):/data/ reslp/samtools:$SAMTOOLS_VERSION samtools sort -o /data/$ASSEMBLY.bam /data/$ASSEMBLY.bam
 	echo "(binner) Will index BAM file ..."
-	docker run -t --rm $DOCKER_USER -v $(pwd):/data/ reslp/samtools samtools index /data/$ASSEMBLY.bam
+	docker run -t --rm $DOCKER_USER -v $(pwd):/data/ reslp/samtools:$SAMTOOLS_VERSION samtools index /data/$ASSEMBLY.bam
 fi
 
 
@@ -158,19 +185,19 @@ if [[ $OPTIONS == *"maxbin"* ]]; then
 	# passing UID and GID doesn't work in this case because of the way maxbin is set up.
 	# I have not yet found a way around this.
 	echo "(binner) Extracting coverage information from BAM file"
-	docker run --rm -t -v $(pwd):/data/ reslp/samtools samtools idxstats /data/$ASSEMBLY.bam > maxbin/$ASSEMBLY.idxstats
+	docker run --rm -t -v $(pwd):/data/ reslp/samtools:$SAMTOOLS_VERSION samtools idxstats /data/$ASSEMBLY.bam > maxbin/$ASSEMBLY.idxstats
 	cut -f1,3 maxbin/$ASSEMBLY.idxstats > maxbin/$ASSEMBLY.counts
-	docker run --rm -t -v $(pwd):/data/ -v $ASSEMBLYPATH:/assembly/ reslp/maxbin run_MaxBin.pl -contig /assembly/$ASSEMBLY -abund /data/maxbin/$ASSEMBLY.counts -thread $THREADS -out /data/maxbin/maxbin_bin_out
+	docker run --rm -t -v $(pwd):/data/ -v $ASSEMBLYPATH:/assembly/ reslp/maxbin:$MAXBIN_VERSION run_MaxBin.pl -contig /assembly/$ASSEMBLY -abund /data/maxbin/$ASSEMBLY.counts -thread $THREADS -out /data/maxbin/maxbin_bin_out
 	if [ "$QUAST" == "quast" ]; then
 		echo "(binner) Will run QUAST for MaxBin bins"
-		docker run --rm -t -v $(pwd):/data/ reslp/quast quast.py $(ls -d -1 "maxbin/"*.fasta | sed 's/^/\/data\//') -o /data/maxbin/quast_maxbin --silent
+		docker run --rm -t -v $(pwd):/data/ reslp/quast:$QUAST_VERSION quast.py $(ls -d -1 "maxbin/"*.fasta | sed 's/^/\/data\//') -o /data/maxbin/quast_maxbin --silent
 	fi
 	if [ "$BUSCO" == "busco" ]; then
 		mkdir -p maxbin/tmp
 		for f in $(ls maxbin/*.fasta); do
 			for BUSC in ${BUSCOS//,/ }; do
 				echo "(binner) Run BUSCO $BUSC for $f"
-				docker run -t --rm $DOCKER_USER -v $(pwd):/data/ -e AUGUSTUS_CONFIG_PATH="/opt/conda/config" -w /data/maxbin reslp/busco run_busco -i $(basename "$f") --out "$BUSC"_"$(basename "$f")" -c $THREADS --lineage_path ../"$BUSC" -m genome -q
+				docker run -t --rm $DOCKER_USER -v $(pwd):/data/ -e AUGUSTUS_CONFIG_PATH="/opt/conda/config" -w /data/maxbin reslp/busco:$BUSCO_VERSION run_busco -i $(basename "$f") --out "$BUSC"_"$(basename "$f")" -c $THREADS --lineage_path ../"$BUSC" -m genome -q
 			done
 		done
 	fi
@@ -180,18 +207,18 @@ fi
 if [[ $OPTIONS == *"metabat"* ]]; then
 	echo "(binner) Will run MetaBat"
 	mkdir -p metabat
-	docker run -t $DOCKER_USER -v $(pwd):/data/ --rm reslp/metabat jgi_summarize_bam_contig_depths --outputDepth /data/metabat/metabat_depth.txt --pairedContigs /data/metabat/metabat_paired.txt /data/$ASSEMBLY.bam
-	docker run -t $DOCKER_USER -w /data/metabat/ -v $(pwd):/data/ -v $ASSEMBLYPATH:/assembly/ --rm reslp/metabat metabat2 -i /assembly/$ASSEMBLY -a /data/metabat/metabat_depth.txt -o metabat --sensitive
+	docker run -t $DOCKER_USER -v $(pwd):/data/ --rm reslp/metabat:$METABAT_VERSION jgi_summarize_bam_contig_depths --outputDepth /data/metabat/metabat_depth.txt --pairedContigs /data/metabat/metabat_paired.txt /data/$ASSEMBLY.bam
+	docker run -t $DOCKER_USER -w /data/metabat/ -v $(pwd):/data/ -v $ASSEMBLYPATH:/assembly/ --rm reslp/metabat:$METABAT_VERSION metabat2 -i /assembly/$ASSEMBLY -a /data/metabat/metabat_depth.txt -o metabat --sensitive
 	if [ "$QUAST" == "quast" ]; then
 		echo "(binner) Will run QUAST for MetaBat bins"
-		docker run --rm -t -v $(pwd):/data/ $DOCKER_USER reslp/quast quast.py $(ls -d -1 "metabat/"*.fa | sed 's/^/\/data\//') -o /data/metabat/quast_metabat --silent
+		docker run --rm -t -v $(pwd):/data/ $DOCKER_USER reslp/quast:QUAST_VERSION quast.py $(ls -d -1 "metabat/"*.fa | sed 's/^/\/data\//') -o /data/metabat/quast_metabat --silent
 	fi
 	if [ "$BUSCO" == "busco" ]; then
 		mkdir -p metabat/tmp
 		for f in $(ls metabat/*.fa); do
 			for BUSC in ${BUSCOS//,/ }; do
 				echo "(binner) Run BUSCO $BUSC for $f"
-				docker run -t --rm $DOCKER_USER -v $(pwd):/data/ -e AUGUSTUS_CONFIG_PATH="/opt/conda/config" -w /data/metabat reslp/busco run_busco -i $(basename "$f") --out "$BUSC"_"$(basename "$f")" -c $THREADS --lineage_path ../"$BUSC" -m genome -q
+				docker run -t --rm $DOCKER_USER -v $(pwd):/data/ -e AUGUSTUS_CONFIG_PATH="/opt/conda/config" -w /data/metabat:$METABAT_VERSION reslp/busco run_busco -i $(basename "$f") --out "$BUSC"_"$(basename "$f")" -c $THREADS --lineage_path ../"$BUSC" -m genome -q
 			done
 		done
 	fi
@@ -203,29 +230,29 @@ if [[ $OPTIONS == *"concoct"* ]]; then
 	echo "(binner) Will run concoct"
 	mkdir -p concoct
 	echo "(binner) Digesting FASTA file ..."
-	docker run -t $DOCKER_USER -v $(pwd):/data/ -v $ASSEMBLYPATH:/assembly/ --rm reslp/concoct cut_up_fasta.py /assembly/"$ASSEMBLY" -c 10000 -o 0 --merge_last -b /data/"$ASSEMBLY"_contigs_10K.bed > "$ASSEMBLY"_contigs_10K.fa
+	docker run -t $DOCKER_USER -v $(pwd):/data/ -v $ASSEMBLYPATH:/assembly/ --rm reslp/concoct:$CONCOCT_VERSION cut_up_fasta.py /assembly/"$ASSEMBLY" -c 10000 -o 0 --merge_last -b /data/"$ASSEMBLY"_contigs_10K.bed > "$ASSEMBLY"_contigs_10K.fa
 	echo "(binner) Creating coverage table ..."
-	docker run -t $DOCKER_USER -v $(pwd):/data/ --rm reslp/concoct concoct_coverage_table.py /data/"$ASSEMBLY"_contigs_10K.bed /data/"$ASSEMBLY".bam > concoct_coverage_table.tsv
+	docker run -t $DOCKER_USER -v $(pwd):/data/ --rm reslp/concoct:$CONCOCT_VERSION concoct_coverage_table.py /data/"$ASSEMBLY"_contigs_10K.bed /data/"$ASSEMBLY".bam > concoct_coverage_table.tsv
 	echo "(binner) running concoct ..."
-	docker run -t $DOCKER_USER -v $(pwd):/data/ --rm reslp/concoct concoct --composition_file /data/"$ASSEMBLY"_contigs_10K.fa --coverage_file /data/concoct_coverage_table.tsv -b /data/concoct/"$ASSEMBLY"_concoct --threads $THREADS
+	docker run -t $DOCKER_USER -v $(pwd):/data/ --rm reslp/concoct:$CONCOCT_VERSION concoct --composition_file /data/"$ASSEMBLY"_contigs_10K.fa --coverage_file /data/concoct_coverage_table.tsv -b /data/concoct/"$ASSEMBLY"_concoct --threads $THREADS
 	echo "(binner) Merging results ..."
-	docker run $DOCKER_USER -v $(pwd):/data/ --rm reslp/concoct merge_cutup_clustering.py /data/concoct/"$ASSEMBLY"_concoct_clustering_gt1000.csv > concoct/"$ASSEMBLY"_concoct_clustering_merged.csv
+	docker run $DOCKER_USER -v $(pwd):/data/ --rm reslp/concoct:$CONCOCT_VERSION merge_cutup_clustering.py /data/concoct/"$ASSEMBLY"_concoct_clustering_gt1000.csv > concoct/"$ASSEMBLY"_concoct_clustering_merged.csv
 	echo "(binner) Exract FASTA chunks ..."
 	mkdir -p concoct/bins
-	docker run -t $DOCKER_USER -v $(pwd):/data/ -v $ASSEMBLYPATH:/assembly/ --rm reslp/concoct extract_fasta_bins.py /assembly/"$ASSEMBLY" /data/concoct/"$ASSEMBLY"_concoct_clustering_merged.csv --output_path /data/concoct/bins
+	docker run -t $DOCKER_USER -v $(pwd):/data/ -v $ASSEMBLYPATH:/assembly/ --rm reslp/concoct:$CONCOCT_VERSION extract_fasta_bins.py /assembly/"$ASSEMBLY" /data/concoct/"$ASSEMBLY"_concoct_clustering_merged.csv --output_path /data/concoct/bins
 	cd concoct/bins
 	rename "s/^/"concoct_"/" *.fa
 	cd ../..
 	if [ "$QUAST" == "quast" ]; then
 		echo "(binner) Will run QUAST for CONCOT bins"
-		docker run --rm -t -v $(pwd):/data/ $DOCKER_USER reslp/quast quast.py $(ls -d -1 "concoct/bins/"*.fa | sed 's/^/\/data\//') -o /data/concoct/quast_concoct --silent
+		docker run --rm -t -v $(pwd):/data/ $DOCKER_USER reslp/quast:$QUAST_VERSION quast.py $(ls -d -1 "concoct/bins/"*.fa | sed 's/^/\/data\//') -o /data/concoct/quast_concoct --silent
 	fi
 	if [ "$BUSCO" == "busco" ]; then
 		mkdir -p concoct/bins/tmp
 		for f in $(ls concoct/bins/*.fa); do
 			for BUSC in ${BUSCOS//,/ }; do
 				echo "(binner) Run BUSCO $BUSC for $f"
-				docker run -t --rm $DOCKER_USER -v $(pwd):/data/ -e AUGUSTUS_CONFIG_PATH="/opt/conda/config" -w /data/concoct/bins reslp/busco run_busco -i $(basename "$f") --out "$BUSC"_"$(basename "$f")" -c $THREADS --lineage_path ../../"$BUSC" -m genome -q
+				docker run -t --rm $DOCKER_USER -v $(pwd):/data/ -e AUGUSTUS_CONFIG_PATH="/opt/conda/config" -w /data/concoct/bins reslp/busco:$BUSCO_VERSION run_busco -i $(basename "$f") --out "$BUSC"_"$(basename "$f")" -c $THREADS --lineage_path ../../"$BUSC" -m genome -q
 			done
 		done
 	fi
@@ -258,14 +285,14 @@ if [[ $OPTIONS == *"blobtools"* ]]; then
 	
 	if [ ! -f blobtools/"$ASSEMBLY"_diamond_matches ]; then
 		echo "(binner) No diamond results found. Will therefore run diamond"
-		docker run -t $DOCKER_USER -v $(pwd):/data/ -v $(dirname $DIAMONDDB):/opt/database/ -v $ASSEMBLYPATH:/assembly/ --rm reslp/diamond diamond blastx -d /opt/database/$(basename $DIAMONDDB) -q /assembly/$ASSEMBLY -o /data/blobtools/"$ASSEMBLY"_diamond_matches -p $THREADS
+		docker run -t $DOCKER_USER -v $(pwd):/data/ -v $(dirname $DIAMONDDB):/opt/database/ -v $ASSEMBLYPATH:/assembly/ --rm reslp/diamond:$DIAMOND_VERSION diamond blastx -d /opt/database/$(basename $DIAMONDDB) -q /assembly/$ASSEMBLY -o /data/blobtools/"$ASSEMBLY"_diamond_matches -p $THREADS
 	fi
 	echo "(binner) reformatting diamond results for use with blobtools..."
 	docker run $DOCKER_USER -v $(pwd):/data/ -v $(dirname $PROTID):/opt/mapping --rm reslp/get_taxids /opt/mapping/prot.accession2taxid /data/blobtools/"$ASSEMBLY"_diamond_matches > blobtools/"$ASSEMBLY"_diamond_matches_formatted
 	echo "(binner) Running blobtools"
-	docker run -t $DOCKER_USER -v $(pwd):/data/  -v $ASSEMBLYPATH:/assembly/ --rm reslp/blobtools create -i /assembly/$ASSEMBLY -b /data/$ASSEMBLY.bam -t /data/blobtools/"$ASSEMBLY"_diamond_matches_formatted -o /data/blobtools/"$ASSEMBLY"_blobtools
-	docker run -t $DOCKER_USER -v $(pwd):/data/ --rm reslp/blobtools view -i /data/blobtools/"$ASSEMBLY"_blobtools.blobDB.json -o /data/blobtools/
-	docker run -t $DOCKER_USER -v $(pwd):/data/ --rm reslp/blobtools plot -i /data/blobtools/"$ASSEMBLY"_blobtools.blobDB.json -o /data/blobtools/
+	docker run -t $DOCKER_USER -v $(pwd):/data/  -v $ASSEMBLYPATH:/assembly/ --rm reslp/blobtools:$BLOBTOOLS_VERSION create -i /assembly/$ASSEMBLY -b /data/$ASSEMBLY.bam -t /data/blobtools/"$ASSEMBLY"_diamond_matches_formatted -o /data/blobtools/"$ASSEMBLY"_blobtools
+	docker run -t $DOCKER_USER -v $(pwd):/data/ --rm reslp/blobtools:$BLOBTOOLS_VERSION view -i /data/blobtools/"$ASSEMBLY"_blobtools.blobDB.json -o /data/blobtools/
+	docker run -t $DOCKER_USER -v $(pwd):/data/ --rm reslp/blobtools:$BLOBTOOLS_VERSION plot -i /data/blobtools/"$ASSEMBLY"_blobtools.blobDB.json -o /data/blobtools/
 	echo "(binner) extracting contigs from blobtools"
 	cp "$ASSEMBLYPATH"/"$ASSEMBLY" blobtools/
 	cd blobtools
@@ -274,14 +301,14 @@ if [[ $OPTIONS == *"blobtools"* ]]; then
 	cd ..
 	if [ "$QUAST" == "quast" ]; then
 		echo "(binner) Will run QUAST for blobtools bins"
-		docker run --rm -t -v $(pwd):/data/ $DOCKER_USER reslp/quast quast.py $(ls -d -1 "blobtools/"*.fa | sed 's/^/\/data\//') -o /data/blobtools/quast_blobtools --silent
+		docker run --rm -t -v $(pwd):/data/ $DOCKER_USER reslp/quast:$QUAST_VERSION quast.py $(ls -d -1 "blobtools/"*.fa | sed 's/^/\/data\//') -o /data/blobtools/quast_blobtools --silent
 	fi
 		if [ "$BUSCO" == "busco" ]; then
 		mkdir -p blobtools/tmp
 		for f in $(ls blobtools/*.fa); do
 			for BUSC in ${BUSCOS//,/ }; do
 				echo "(binner) Run BUSCO $BUSC for $f"
-				docker run -t --rm $DOCKER_USER -v $(pwd):/data/ -e AUGUSTUS_CONFIG_PATH="/opt/conda/config" -w /data/blobtools reslp/busco run_busco -i $(basename "$f") --out "$BUSC"_"$(basename "$f")" -c $THREADS --lineage_path ../"$BUSC" -m genome -q
+				docker run -t --rm $DOCKER_USER -v $(pwd):/data/ -e AUGUSTUS_CONFIG_PATH="/opt/conda/config" -w /data/blobtools:$BLOBTOOLS_VERSION reslp/busco run_busco -i $(basename "$f") --out "$BUSC"_"$(basename "$f")" -c $THREADS --lineage_path ../"$BUSC" -m genome -q
 			done
 		done
 	fi
@@ -289,6 +316,6 @@ fi
 
 if [ "$MULTIQC" == "multiqc" ]; then
 	echo "(binner) --multiqc specified. Will run multiQC now."
-	docker run -t --rm $DOCKER_USER -v $(pwd):/data/ -w /data/ reslp/multiqc
+	docker run -t --rm $DOCKER_USER -v $(pwd):/data/ -w /data/ reslp/multiqc:$MULTIQC_VERSION
 fi
 
