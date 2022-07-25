@@ -25,7 +25,7 @@ usage() {
 	echo "	-q run QUAST on the binned sets of contigs"
 	echo "	-b run BUSCO on the binned sets of contigs. See additional details below."
 	echo "	--multiqc Run multiqc after all binning steps to create a summary report on all the bins. This should be used together with -q, -b or both."
-	echo "  --singularity Use singularity instead of Docker to run containers."
+	echo "	--singularity Use singularity instead of Docker to run containers."
 	echo
 	echo "	-v Display program version and versions of used additional software."
 	echo
@@ -139,8 +139,7 @@ echo $RF1PATH
 echo $RF1
 
 if [[ "$SINGULARITY" == "yes" ]]; then
-	echo "Will be using Singularity instead of Docker"
-	exit 1
+	echo "Will be using Singularity instead of Docker. This is still experimental."
 fi
 
 
