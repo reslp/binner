@@ -209,11 +209,11 @@ if [[ $OPTIONS == *"maxbin"* ]]; then
 	if [[ "$SINGULARITY" == "yes" ]]; then
 		singularity exec -B $(pwd):/data docker://reslp/samtools:$SAMTOOLS_VERSION  samtools idxstats /data/$ASSEMBLY.bam > maxbin/$ASSEMBLY.idxstats
 		cut -f1,3 maxbin/$ASSEMBLY.idxstats > maxbin/$ASSEMBLY.counts
-		singularity exec -B $(pwd):/data docker://reslp/maxbin:$MAXBIN_VERSION run_MaxBin.pl -contig /assembly/$ASSEMBLY -abund /data/maxbin/$ASSEMBLY.counts -thread $THREADS -out /data/maxbin/maxbin_bin_out
+		singularity exec -B $(pwd):/data docker://reslp/maxbin:$MAXBIN_VERSION run_MaxBin.pl -contig /data/$ASSEMBLY -abund /data/maxbin/$ASSEMBLY.counts -thread $THREADS -out /data/maxbin/maxbin_bin_out
 	else
 		docker run --rm -t -v $(pwd):/data/ reslp/samtools:$SAMTOOLS_VERSION samtools idxstats /data/$ASSEMBLY.bam > maxbin/$ASSEMBLY.idxstats
 		cut -f1,3 maxbin/$ASSEMBLY.idxstats > maxbin/$ASSEMBLY.counts
-		docker run --rm -t -v $(pwd):/data/ -v $ASSEMBLYPATH:/assembly/ reslp/maxbin:$MAXBIN_VERSION run_MaxBin.pl -contig /assembly/$ASSEMBLY -abund /data/maxbin/$ASSEMBLY.counts -thread $THREADS -out /data/maxbin/maxbin_bin_out
+		docker run --rm -t -v $(pwd):/data/ -v $ASSEMBLYPATH:/assembly/ reslp/maxbin:$MAXBIN_VERSION run_MaxBin.pl -contig /data/$ASSEMBLY -abund /data/maxbin/$ASSEMBLY.counts -thread $THREADS -out /data/maxbin/maxbin_bin_out
 	fi
 	if [ "$QUAST" == "quast" ]; then
 		echo "(binner) Will run QUAST for MaxBin bins"
@@ -291,7 +291,7 @@ if [[ $OPTIONS == *"concoct"* ]]; then
 		mkdir -p concoct/bins
 		singularity exec -B $(pwd):/data -B $ASSEMBLYPATH:/assembly docker://reslp/concoct:$CONCOCT_VERSION extract_fasta_bins.py /assembly/"$ASSEMBLY" /data/concoct/"$ASSEMBLY"_concoct_clustering_merged.csv --output_path /data/concoct/bins
 		cd concoct/bins
-		rename "s/^/"concoct_"/" *.fa
+		singularity exec docker://reslp/rename:1.10-1 rename "s/^/"concoct_"/" *.fa
 		cd ../..
 	else
 		echo "(binner) Digesting FASTA file ..."
@@ -306,7 +306,7 @@ if [[ $OPTIONS == *"concoct"* ]]; then
 		mkdir -p concoct/bins
 		docker run -t $DOCKER_USER -v $(pwd):/data/ -v $ASSEMBLYPATH:/assembly/ --rm reslp/concoct:$CONCOCT_VERSION extract_fasta_bins.py /assembly/"$ASSEMBLY" /data/concoct/"$ASSEMBLY"_concoct_clustering_merged.csv --output_path /data/concoct/bins
 		cd concoct/bins
-		rename "s/^/"concoct_"/" *.fa
+		docker run --rm -v $(pwd):/data reslp/rename:1.10-1 rename "s/^/"concoct_"/" *.fa
 		cd ../..
 	fi
 	if [ "$QUAST" == "quast" ]; then
