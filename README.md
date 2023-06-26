@@ -1,7 +1,7 @@
 binner
 =========
 
-binner is a wrapper script to run several metagenome binning programs using Docker.
+binner runs multipe metagenome binning programs using a single command.
 
 
 Supported Binners
@@ -22,7 +22,10 @@ REQUIREMENTS
 ============
 
 - MacOS X or other Unix like operating system
+A container runtime:  
 - Docker: https://www.docker.com/get-started
+or  
+- Singularity/Apptainer: https://apptainer.org/
 
 
 INSTALLATION
@@ -144,7 +147,7 @@ This command will run binning with maxbin,blobtools and concoct and perform down
 COPYRIGTH AND LICENSE
 =====================
 
-Copyright (C) 2019 Philipp Resl
+Copyright (C) 2019-2023 Philipp Resl
 
 binner is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 
