@@ -374,9 +374,9 @@ if [[ $OPTIONS == *"blobtools"* ]]; then
 		fi
 	echo "(binner) Running blobtools"
 	if [[ "$SINGULARITY" == "yes" ]]; then
-		singularity exec -B $(pwd):/data -B $ASSEMBLYPATH:/assembly docker://reslp/blobtools:$BLOBTOOLS_VERSION create -i /assembly/$ASSEMBLY -b /data/$ASSEMBLY.bam -t /data/blobtools/"$ASSEMBLY"_diamond_matches_formatted -o /data/blobtools/"$ASSEMBLY"_blobtools
-		singularity exec -B $(pwd):/data -B $ASSEMBLYPATH:/assembly docker://reslp/blobtools:$BLOBTOOLS_VERSION view -i /data/blobtools/"$ASSEMBLY"_blobtools.blobDB.json -o /data/blobtools/
-		singularity exec -B $(pwd):/data -B $ASSEMBLYPATH:/assembly docker://reslp/blobtools:$BLOBTOOLS_VERSION plot -i /data/blobtools/"$ASSEMBLY"_blobtools.blobDB.json -o /data/blobtools/
+		singularity exec -B $(pwd):/data -B $ASSEMBLYPATH:/assembly docker://reslp/blobtools:$BLOBTOOLS_VERSION blobtools create -i /assembly/$ASSEMBLY -b /data/$ASSEMBLY.bam -t /data/blobtools/"$ASSEMBLY"_diamond_matches_formatted -o /data/blobtools/"$ASSEMBLY"_blobtools
+		singularity exec -B $(pwd):/data -B $ASSEMBLYPATH:/assembly docker://reslp/blobtools:$BLOBTOOLS_VERSION blobtools view -i /data/blobtools/"$ASSEMBLY"_blobtools.blobDB.json -o /data/blobtools/
+		singularity exec -B $(pwd):/data -B $ASSEMBLYPATH:/assembly docker://reslp/blobtools:$BLOBTOOLS_VERSION blobtools plot -i /data/blobtools/"$ASSEMBLY"_blobtools.blobDB.json -o /data/blobtools/
 	else
 		docker run -t $DOCKER_USER -v $(pwd):/data/  -v $ASSEMBLYPATH:/assembly/ --rm reslp/blobtools:$BLOBTOOLS_VERSION create -i /assembly/$ASSEMBLY -b /data/$ASSEMBLY.bam -t /data/blobtools/"$ASSEMBLY"_diamond_matches_formatted -o /data/blobtools/"$ASSEMBLY"_blobtools
 		docker run -t $DOCKER_USER -v $(pwd):/data/ --rm reslp/blobtools:$BLOBTOOLS_VERSION view -i /data/blobtools/"$ASSEMBLY"_blobtools.blobDB.json -o /data/blobtools/
