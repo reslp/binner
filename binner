@@ -368,30 +368,36 @@ if [[ $OPTIONS == *"blobtools"* ]]; then
 	fi
 	echo "(binner) reformatting diamond results for use with blobtools..."
 		if [[ "$SINGULARITY" == "yes" ]]; then
-			singularity exec -B $(pwd):/data -B $(dirname $PROTID):/opt/mapping docker://reslp/get_taxids get_taxids.py /opt/mapping/prot.accession2taxid /data/blobtools/"$ASSEMBLY"_diamond_matches > blobtools/"$ASSEMBLY"_diamond_matches_formatted
+			#singularity exec -B $(pwd):/data -B $(dirname $PROTID):/opt/mapping docker://reslp/get_taxids get_taxids.py /opt/mapping/prot.accession2taxid /data/blobtools/"$ASSEMBLY"_diamond_matches > blobtools/"$ASSEMBLY"_diamond_matches_formatted
+			echo
 		else
-			docker run $DOCKER_USER -v $(pwd):/data/ -v $(dirname $PROTID):/opt/mapping --rm reslp/get_taxids /opt/mapping/prot.accession2taxid /data/blobtools/"$ASSEMBLY"_diamond_matches > blobtools/"$ASSEMBLY"_diamond_matches_formatted
+			#docker run $DOCKER_USER -v $(pwd):/data/ -v $(dirname $PROTID):/opt/mapping --rm reslp/get_taxids /opt/mapping/prot.accession2taxid /data/blobtools/"$ASSEMBLY"_diamond_matches > blobtools/"$ASSEMBLY"_diamond_matches_formatted
+			echo
 		fi
-	echo "(binner) Running blobtools"
-	if [[ "$SINGULARITY" == "yes" ]]; then
-		singularity exec -B $(pwd):/data -B $ASSEMBLYPATH:/assembly docker://reslp/blobtools:$BLOBTOOLS_VERSION blobtools create -i /assembly/$ASSEMBLY -b /data/$ASSEMBLY.bam -t /data/blobtools/"$ASSEMBLY"_diamond_matches_formatted -o /data/blobtools/"$ASSEMBLY"_blobtools
-		singularity exec -B $(pwd):/data -B $ASSEMBLYPATH:/assembly docker://reslp/blobtools:$BLOBTOOLS_VERSION blobtools view -i /data/blobtools/"$ASSEMBLY"_blobtools.blobDB.json -o /data/blobtools/
-		singularity exec -B $(pwd):/data -B $ASSEMBLYPATH:/assembly docker://reslp/blobtools:$BLOBTOOLS_VERSION blobtools plot -i /data/blobtools/"$ASSEMBLY"_blobtools.blobDB.json -o /data/blobtools/
+	if [[ -f blobtools/"$ASSEMBLY"_blobtools.blobDB.json ]]; then
+		echo "(binner) blobtools results seem to be present. Will skip"
 	else
-		docker run -t $DOCKER_USER -v $(pwd):/data/  -v $ASSEMBLYPATH:/assembly/ --rm reslp/blobtools:$BLOBTOOLS_VERSION create -i /assembly/$ASSEMBLY -b /data/$ASSEMBLY.bam -t /data/blobtools/"$ASSEMBLY"_diamond_matches_formatted -o /data/blobtools/"$ASSEMBLY"_blobtools
-		docker run -t $DOCKER_USER -v $(pwd):/data/ --rm reslp/blobtools:$BLOBTOOLS_VERSION view -i /data/blobtools/"$ASSEMBLY"_blobtools.blobDB.json -o /data/blobtools/
-		docker run -t $DOCKER_USER -v $(pwd):/data/ --rm reslp/blobtools:$BLOBTOOLS_VERSION plot -i /data/blobtools/"$ASSEMBLY"_blobtools.blobDB.json -o /data/blobtools/
+		echo "(binner) Running blobtools"
+		if [[ "$SINGULARITY" == "yes" ]]; then
+			singularity exec -B $(pwd):/data -B $ASSEMBLYPATH:/assembly docker://reslp/blobtools:$BLOBTOOLS_VERSION blobtools create -i /assembly/$ASSEMBLY -b /data/$ASSEMBLY.bam -t /data/blobtools/"$ASSEMBLY"_diamond_matches_formatted -o /data/blobtools/"$ASSEMBLY"_blobtools
+			singularity exec -B $(pwd):/data -B $ASSEMBLYPATH:/assembly docker://reslp/blobtools:$BLOBTOOLS_VERSION blobtools view -i /data/blobtools/"$ASSEMBLY"_blobtools.blobDB.json -o /data/blobtools/
+			singularity exec -B $(pwd):/data -B $ASSEMBLYPATH:/assembly docker://reslp/blobtools:$BLOBTOOLS_VERSION blobtools plot -i /data/blobtools/"$ASSEMBLY"_blobtools.blobDB.json -o /data/blobtools/
+		else
+			docker run -t $DOCKER_USER -v $(pwd):/data/  -v $ASSEMBLYPATH:/assembly/ --rm reslp/blobtools:$BLOBTOOLS_VERSION create -i /assembly/$ASSEMBLY -b /data/$ASSEMBLY.bam -t /data/blobtools/"$ASSEMBLY"_diamond_matches_formatted -o /data/blobtools/"$ASSEMBLY"_blobtools
+			docker run -t $DOCKER_USER -v $(pwd):/data/ --rm reslp/blobtools:$BLOBTOOLS_VERSION view -i /data/blobtools/"$ASSEMBLY"_blobtools.blobDB.json -o /data/blobtools/
+			docker run -t $DOCKER_USER -v $(pwd):/data/ --rm reslp/blobtools:$BLOBTOOLS_VERSION plot -i /data/blobtools/"$ASSEMBLY"_blobtools.blobDB.json -o /data/blobtools/
+		fi
+		echo "(binner) extracting contigs from blobtools"
+		cp "$ASSEMBLYPATH"/"$ASSEMBLY" blobtools/
+		cd blobtools
+		if [[ "$SINGULARITY" == "yes" ]]; then
+			singularity exec -B $(pwd):/data -B $ASSEMBLYPATH:/assembly docker://reslp/extract_contigs /usr/bin/extract_contigs_from_blobtools.py /assembly/"$ASSEMBLY" /data/"$ASSEMBLY"_blobtools.blobDB.table.txt
+		else
+			docker run -t $DOCKER_USER -v $(pwd):/data/ -v $ASSEMBLYPATH:/assembly/ --rm reslp/extract_contigs /assembly/"$ASSEMBLY" /data/"$ASSEMBLY"_blobtools.blobDB.table.txt
+		fi
+		rm $ASSEMBLY
+		cd ..
 	fi
-	echo "(binner) extracting contigs from blobtools"
-	cp "$ASSEMBLYPATH"/"$ASSEMBLY" blobtools/
-	cd blobtools
-	if [[ "$SINGULARITY" == "yes" ]]; then
-		singularity exec -B $(pwd):/data -B $ASSEMBLYPATH:/assembly docker://reslp/extract_contigs /usr/bin/extract_contigs_from_blobtools.py /assembly/"$ASSEMBLY" /data/"$ASSEMBLY"_blobtools.blobDB.table.txt
-	else
-		docker run -t $DOCKER_USER -v $(pwd):/data/ -v $ASSEMBLYPATH:/assembly/ --rm reslp/extract_contigs /assembly/"$ASSEMBLY" /data/"$ASSEMBLY"_blobtools.blobDB.table.txt
-	fi
-	rm $ASSEMBLY
-	cd ..
 	if [ "$QUAST" == "quast" ]; then
 		echo "(binner) Will run QUAST for blobtools bins"
 		if [[ "$SINGULARITY" == "yes" ]]; then
@@ -406,7 +412,11 @@ if [[ $OPTIONS == *"blobtools"* ]]; then
 			for BUSC in ${BUSCOS//,/ }; do
 				echo "(binner) Run BUSCO $BUSC for $f"
 				if [[ "$SINGULARITY" == "yes" ]]; then
-					singularity exec -B $(pwd):/data docker://reslp/busco:$BUSCO_VERSION export AUGUSTUS_CONFIG_PATH="/opt/conda/config" && cd concoct/bins && run_busco -i $(basename "$f") --out "$BUSC"_"$(basename "$f")" -c $THREADS --lineage_path ../"$BUSC" -m genome -q
+					if [ ! -d "$(pwd)/config" ]; then
+						echo "(binner) Singularity specific Will copy augustus config path folder to writable location"
+						singularity exec -B $(pwd):/data --env AUGUSTUS_CONFIG_PATH="/opt/conda/config" docker://reslp/busco:$BUSCO_VERSION cp -r /opt/conda/config /data/config
+					fi
+					singularity exec -B $(pwd):/data --env AUGUSTUS_CONFIG_PATH="/data/config" docker://reslp/busco:$BUSCO_VERSION run_busco -i $(basename "$f") --out "$BUSC"_"$(basename "$f")" -c $THREADS --lineage_path "/data/$BUSC" -m genome -q
 				else
 					docker run -t --rm $DOCKER_USER -v $(pwd):/data/ -e AUGUSTUS_CONFIG_PATH="/opt/conda/config" -w /data/blobtools:$BLOBTOOLS_VERSION reslp/busco run_busco -i $(basename "$f") --out "$BUSC"_"$(basename "$f")" -c $THREADS --lineage_path ../"$BUSC" -m genome -q
 				fi
