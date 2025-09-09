@@ -1,0 +1,2 @@
+samples: "data/samples.tsv"
+methods: "maxbin,metabat,concoct"
