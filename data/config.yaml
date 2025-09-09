@@ -1,2 +1,5 @@
 samples: "data/samples.tsv"
-methods: "maxbin,metabat,concoct"
+methods: "maxbin,metabat,concoct,blobtools"
+
+prot2taxid: "/cl_tmp/reslph/databases/prot.accession2taxid"
+diamonddb: "/software/BioSW/diamond/nr_20220707.dmnd"

@@ -19,6 +19,7 @@ include: "rules/read-mapping.smk"
 include: "rules/metabat.smk"
 include: "rules/maxbin.smk"
 include: "rules/concoct.smk"
+include: "rules/blobtools.smk"
 
 def determine_output(wildcards):
 	l = []
